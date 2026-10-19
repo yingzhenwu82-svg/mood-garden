@@ -1,0 +1,308 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>今日心情小花園</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background: #fffaf5;
+      color: #51483f;
+    }
+
+    header {
+      text-align: center;
+      padding: 38px 20px 25px;
+      background: #f5e9dc;
+    }
+
+    header .flower { font-size: 42px; }
+
+    h1 {
+      margin: 8px 0;
+      color: #755d4d;
+      font-size: 28px;
+    }
+
+    header p { margin: 8px 0; color: #8d7868; }
+
+    main {
+      width: min(680px, 92%);
+      margin: 28px auto 50px;
+    }
+
+    .card {
+      background: white;
+      padding: 24px;
+      margin-bottom: 20px;
+      border-radius: 20px;
+      box-shadow: 0 5px 20px #80664a12;
+    }
+
+    h2 { font-size: 19px; margin-top: 0; }
+
+    .moods {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin: 18px 0;
+    }
+
+    .mood {
+      border: 1px solid #eee2d6;
+      background: #fffaf6;
+      border-radius: 14px;
+      padding: 12px 3px;
+      cursor: pointer;
+      color: #76685c;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .mood span {
+      display: block;
+      font-size: 25px;
+      margin-bottom: 5px;
+    }
+
+    .mood.selected {
+      border: 2px solid #bd9478;
+      background: #f8eee5;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 105px;
+      resize: vertical;
+      border: 1px solid #eadfd5;
+      border-radius: 12px;
+      padding: 13px;
+      font: inherit;
+      background: #fffdfb;
+      outline-color: #bd9478;
+    }
+
+    .save {
+      display: block;
+      width: 100%;
+      margin-top: 15px;
+      padding: 13px;
+      border: 0;
+      border-radius: 12px;
+      background: #98745b;
+      color: white;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .save:hover { background: #805f49; }
+
+    .entry {
+      border-left: 4px solid #d8b69b;
+      background: #fffaf6;
+      border-radius: 8px;
+      padding: 14px;
+      margin: 12px 0;
+    }
+
+    .entry-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 14px;
+      color: #8a7463;
+    }
+
+    .entry p {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      margin-bottom: 5px;
+    }
+
+    .delete {
+      border: 0;
+      background: transparent;
+      color: #a17c69;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    #empty {
+      color: #a39385;
+      text-align: center;
+      padding: 18px 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 10px 20px 30px;
+      color: #a39385;
+      font-size: 13px;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 18px; }
+      .moods { grid-template-columns: repeat(3, 1fr); }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="flower">🌷 🌼 🌷</div>
+    <h1>今日心情小花園</h1>
+    <p>每天留一點時間，照顧自己的心情。</p>
+    <p id="today"></p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>今天的心情是？</h2>
+      <div class="moods" id="moods">
+        <button class="mood" data-mood="開心" data-emoji="😊">
+          <span>😊</span>開心
+        </button>
+        <button class="mood" data-mood="平靜" data-emoji="🌿">
+          <span>🌿</span>平靜
+        </button>
+        <button class="mood" data-mood="難過" data-emoji="🌧️">
+          <span>🌧️</span>難過
+        </button>
+        <button class="mood" data-mood="焦慮" data-emoji="🌥️">
+          <span>🌥️</span>焦慮
+        </button>
+        <button class="mood" data-mood="疲憊" data-emoji="🌙">
+          <span>🌙</span>疲憊
+        </button>
+      </div>
+
+      <label for="note"><h2>寫下今天的小故事</h2></label>
+      <textarea id="note" placeholder="今天發生了什麼事？或是想對自己說什麼呢？"></textarea>
+      <button class="save" id="save">🌷 收藏今天的心情</button>
+    </section>
+
+    <section class="card">
+      <h2>我的心情日記 📖</h2>
+      <div id="entries"></div>
+      <p id="empty">還沒有紀錄，寫下第一朵心情小花吧！</p>
+    </section>
+  </main>
+
+  <footer>每一種心情，都值得被好好照顧。🌱</footer>
+
+  <script>
+    const moodButtons = document.querySelectorAll(".mood");
+    const noteInput = document.getElementById("note");
+    const entriesBox = document.getElementById("entries");
+    const emptyMessage = document.getElementById("empty");
+
+    let selectedMood = null;
+    let records = [];
+
+    try {
+      records = JSON.parse(localStorage.getItem("moodGardenRecords")) || [];
+      if (!Array.isArray(records)) records = [];
+    } catch {
+      records = [];
+    }
+
+    document.getElementById("today").textContent =
+      new Date().toLocaleDateString("zh-TW", {
+        year: "numeric", month: "long", day: "numeric",
+        weekday: "long"
+      });
+
+    moodButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        moodButtons.forEach(b => b.classList.remove("selected"));
+        button.classList.add("selected");
+        selectedMood = {
+          name: button.dataset.mood,
+          emoji: button.dataset.emoji
+        };
+      });
+    });
+
+    document.getElementById("save").addEventListener("click", () => {
+      if (!selectedMood) {
+        alert("先選擇今天的心情喔！");
+        return;
+      }
+
+      const note = noteInput.value.trim();
+
+      if (!note) {
+        alert("寫下一點今天的故事再儲存吧！");
+        noteInput.focus();
+        return;
+      }
+
+      records.unshift({
+        id: Date.now(),
+        date: new Date().toLocaleDateString("zh-TW"),
+        mood: selectedMood.name,
+        emoji: selectedMood.emoji,
+        note: note
+      });
+
+      try {
+        localStorage.setItem("moodGardenRecords", JSON.stringify(records));
+      } catch {
+        alert("瀏覽器無法儲存資料，請檢查儲存空間設定。");
+        records.shift();
+        return;
+      }
+
+      noteInput.value = "";
+      selectedMood = null;
+      moodButtons.forEach(b => b.classList.remove("selected"));
+      renderRecords();
+    });
+
+    function renderRecords() {
+      entriesBox.replaceChildren();
+      emptyMessage.style.display = records.length ? "none" : "block";
+
+      records.forEach(record => {
+        const entry = document.createElement("article");
+        entry.className = "entry";
+
+        const top = document.createElement("div");
+        top.className = "entry-top";
+
+        const label = document.createElement("strong");
+        label.textContent = `${record.date}｜${record.emoji} ${record.mood}`;
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "delete";
+        deleteButton.textContent = "刪除";
+        deleteButton.setAttribute("aria-label", "刪除這筆紀錄");
+
+        deleteButton.addEventListener("click", () => {
+          if (confirm("確定要刪除這筆心情紀錄嗎？")) {
+            records = records.filter(r => r.id !== record.id);
+            localStorage.setItem("moodGardenRecords", JSON.stringify(records));
+            renderRecords();
+          }
+        });
+
+        const content = document.createElement("p");
+        content.textContent = record.note;
+
+        top.append(label, deleteButton);
+        entry.append(top, content);
+        entriesBox.append(entry);
+      });
+    }
+
+    renderRecords();
+  </script>
+</body>
+</html>
